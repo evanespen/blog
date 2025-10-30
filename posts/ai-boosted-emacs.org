@@ -3,7 +3,7 @@
 #+DRAFT: false
 #+AUTHOR: Evrard Van Espen
 #+DESCRIPTION: Présentation et installation d'un assistant de code IA dans Emacs : aider.
-#+SLUG: agent-ia-emacs
+#+SLUG: agent-ia-emacs-bases
 #+TAGS: ai, emacs
 #+HERO: ./aider.jpg
 
@@ -69,19 +69,22 @@ J'ai donc ajouté cette configuration à mon fichier =~/.zshrc=.
 
 Ajoutez ce bloc à votre fichier de configuration /Emacs/ :
 #+BEGIN_SRC elisp
-(use-package aidermacs
-  :ensure t
-  :bind (("C-c a" . aidermacs-transient-menu))
-  :config
-  (exec-path-from-shell-initialize)
-  (setq exec-path-from-shell-variables '("CODESTRAL_API_KEY"))
-  (setq aider-args '("--model" "codestral/codestral-latest" "--no-auto-accept-architect" "--no-auto-commits"))
-  (setq aidermacs-program (expand-file-name "~/.local/bin/aider"))
-  (setq aidermacs-show-diff-after-change t)
-  :custom
-  (aidermacs-default-chat-mode 'architect)
-  (aidermacs-default-model "codestral/codestral-latest")
-  )
+  (use-package aidermacs
+    :ensure t
+    :bind (("C-c a" . aidermacs-transient-menu))
+    :config
+    (exec-path-from-shell-initialize)
+    (setq exec-path-from-shell-variables '("CODESTRAL_API_KEY"))
+    (setq aider-args '("--model" "codestral/codestral-latest"
+  		     "--no-auto-accept-architect"
+  		     "--no-auto-commits"))
+    (setq aidermacs-program (expand-file-name "~/.local/bin/aider"))
+    (setq aidermacs-show-diff-after-change t)
+    (setq aidermacs-watch-files t)
+    :custom
+    (aidermacs-default-chat-mode 'architect)
+    (aidermacs-default-model "codestral/codestral-latest")
+    )
 #+END_SRC
 
 Explications :
@@ -94,7 +97,9 @@ Explications :
 Ces lignes permettent de charger la variable d'environnement =CODESTRAL_API_KEY= dans /Emacs/ afin que ce dernier puisse lire sa valeur.
 
 #+BEGIN_SRC elisp
-  (setq aider-args '("--model" "codestral/codestral-latest" "--no-auto-accept-architect" "--no-auto-commits"))
+  (setq aider-args '("--model" "codestral/codestral-latest"
+  		     "--no-auto-accept-architect"
+  		     "--no-auto-commits"))
 #+END_SRC
 
 Cette ligne indique le modèle à utiliser par défaut.
@@ -138,6 +143,17 @@ Enfin, faites =C-c a= afin d'ouvrir le menu de =aidermacs=.
 
 ** Démonstration
 
+#+ATTR_HTML: :style width: 100% :controls ""
+[[./aidermacs.mp4]]
+
 
 
 * Conclusion
+
+Vous aimez l’idée d’un outil comme /Cursor/, mais vous ne voulez pas quitter /Emacs/ ? Aidermacs vous offre le meilleur des deux mondes : une assistance IA avancée, directement intégrée à votre éditeur préféré.
+Grâce à =aider=, vous bénéficiez d’un agent de code capable d’écrire, analyser et corriger votre code, avec la puissance de modèles comme /Codestral/ ou /Claude/, le tout sans quitter /Emacs/.
+
+
+Avec une configuration simple et un accès rapide via =C-c a=, vous disposez d’un véritable pair-programmeur IA, tout en restant dans l’environnement que vous maîtrisez.
+
+Dans le prochain article, nous irons plus en profondeur dans les fonctionnalités d'=aidermacs= et ses différents modes.

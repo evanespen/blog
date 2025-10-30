@@ -51,6 +51,7 @@ This is a personal blog built with Go, using the go-org library to parse Org-mod
 
 ## TODO
 - [X] code documentation
+- [ ] footer
 - [ ] resume page
 - [ ] contact page
 - [ ] responsive
