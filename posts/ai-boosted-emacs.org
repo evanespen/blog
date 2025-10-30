@@ -1,0 +1,143 @@
+#+TITLE: Un agent de dev IA dans Emacs
+#+DATE: 2025-10-27T18:29:56Z
+#+DRAFT: false
+#+AUTHOR: Evrard Van Espen
+#+DESCRIPTION: Présentation et installation d'un assistant de code IA dans Emacs : aider.
+#+SLUG: agent-ia-emacs
+#+TAGS: ai, emacs
+#+HERO: ./aider.jpg
+
+* Un agent IA ? Qu'est ce que c'est ?
+
+Contrairement à l'utilisation d'un LLM dans une interface web, comme lors de l'utilisation du /chat/ de /Mistral/ qui ne permet qu'une interaction textuelle avec l'utilisateur, l'utilisation d'un agent permet de donner accès à des "outils" au modèle de langage.
+Un *agent IA* peut ainsi interagir avec son environnement d’exécution, par exemple lire des fichiers ou faire des recherches sur le web etc.
+En résumé, le LLM est le "cerveau" qui comprend et génère du langage, tandis que l'agent est un système qui permet d'utiliser ce "cerveau" pour effectuer des actions.
+
+
+* Le rôle d'un agent de code
+
+Un agent de code est un type d'agent IA spécialement conçu pour effectuer des tâches en lien avec du code.
+Il utilise un LLM spécialement entraîné pour comprendre et générer du code en suivant des contraintes.
+
+Il peut se limiter à compléter automatiquement le code que le développeur est en train d'écrire mais il peut aller plus loin :
+- Écrire des fonctions entières;
+- Analyser le code existant;
+- Corriger (essayer) les erreurs du code;
+- Automatiser les tâches répétitives, telles que l'écriture des tests.
+
+Vous avez sûrement déjà entendu parler de /Cursor/, /Windsurf/ ou de /Jetbrains Junie/, eh bien ce sont des agents de développement.
+
+
+* La solution mise en place
+
+Afin d'ajouter cette fonctionnalité à /Emacs/, j'ai mis en place le paquet =aidermacs=, qui permet de faire l'interface entre =aider= et /Emacs/.
+=aider= est un agent de code destiné à fonctionner en terminal, et qui supporte la majorité des modèles de langage du marché tels que /Claude Code/, /GPT/ ou encode /Mistral Codestral/.
+
+** Les différents modes d'=aider=
+
+** Installation de =aider=
+
+#+BEGIN_NOTE
+Source officielle : [[https://aider.chat/docs/install.html][https://aider.chat/docs/install.html]]
+#+END_NOTE
+
+L'installation se fait avec un module /Python/ qui sert d'installateur à l'outil :
+#+BEGIN_SRC bash
+python -m pip install aider-install
+aider-install
+#+END_SRC
+
+Une fois terminé, vérifiez que =aider= s'est bien installé :
+#+BEGIN_SRC bash
+> aider --version
+aider 0.86.1
+#+END_SRC
+
+
+** Installation de =aidermacs=
+
+#+BEGIN_NOTE
+Si vous souhaitez utiliser un modèle distant comme par exemple /Claude Code/ ou /Codestral/, il va vous falloir une clef d'/API/.
+Une fois cette clef en votre possession, vous pouvez passer à la suite.
+#+END_NOTE
+
+#+BEGIN_NOTE
+J'ai choisi d'utiliser le modèle [[https://mistral.ai/fr/news/codestral-2501][/Codestral/]] de chez [[https://mistral.ai/fr][/Mistral/]].
+D'après la [[https://aider.chat/docs/llms.html][documenation /aider/]], j'ai donc besoin de configurer la variable d'environnement =CODESTRAL_API_KEY= sur mon système.
+J'ai donc ajouté cette configuration à mon fichier =~/.zshrc=.
+#+END_NOTE
+
+Ajoutez ce bloc à votre fichier de configuration /Emacs/ :
+#+BEGIN_SRC elisp
+(use-package aidermacs
+  :ensure t
+  :bind (("C-c a" . aidermacs-transient-menu))
+  :config
+  (exec-path-from-shell-initialize)
+  (setq exec-path-from-shell-variables '("CODESTRAL_API_KEY"))
+  (setq aider-args '("--model" "codestral/codestral-latest" "--no-auto-accept-architect" "--no-auto-commits"))
+  (setq aidermacs-program (expand-file-name "~/.local/bin/aider"))
+  (setq aidermacs-show-diff-after-change t)
+  :custom
+  (aidermacs-default-chat-mode 'architect)
+  (aidermacs-default-model "codestral/codestral-latest")
+  )
+#+END_SRC
+
+Explications :
+
+#+BEGIN_SRC elisp
+  (exec-path-from-shell-initialize)
+  (setq exec-path-from-shell-variables '("CODESTRAL_API_KEY"))
+#+END_SRC
+
+Ces lignes permettent de charger la variable d'environnement =CODESTRAL_API_KEY= dans /Emacs/ afin que ce dernier puisse lire sa valeur.
+
+#+BEGIN_SRC elisp
+  (setq aider-args '("--model" "codestral/codestral-latest" "--no-auto-accept-architect" "--no-auto-commits"))
+#+END_SRC
+
+Cette ligne indique le modèle à utiliser par défaut.
+
+L'option =--no-auto-accept-architect= permet de demander la validation avant d'effectuer des changements dans le mode "architecte".
+
+L'option =--no-auto-commits= permet de désactiver les /commits/ automatiques après les changements dans le code.
+
+#+BEGIN_SRC elisp
+  (setq aidermacs-program (expand-file-name "~/.local/bin/aider"))
+#+END_SRC
+
+Cette ligne permet d'indiquer où se situe le binaire de =aider=.
+
+#+BEGIN_SRC elisp
+  (setq aidermacs-show-diff-after-change t)
+#+END_SRC
+
+Cette ligne permet d'afficher automatiquement le /diff/ des fichiers dès qu'ils ont été modifiés.
+
+#+BEGIN_SRC elisp
+  (aidermacs-default-chat-mode 'architect)
+#+END_SRC
+
+Cette ligne permet de sélectionner le mode par défaut de =aider= lors de son lancement.
+
+#+BEGIN_SRC elisp
+  (aidermacs-default-model "codestral/codestral-latest")
+#+END_SRC
+
+Cette ligne permet de choisir le modèle à utiliser par défaut.
+
+
+Une fois que vous avez ajouté le bloc à votre configuration /Emacs/ et que vous l'avez modifié selon votre besoin, vous pouvez relancer /Emacs/ (ou sélectionner le bloc et faire =M-x= puis =eval-region= afin d'exécuter la sélection).
+
+Enfin, faites =C-c a= afin d'ouvrir le menu de =aidermacs=.
+
+#+ATTR_HTML: :style width: 100%
+[[./aidermacs-menu.jpg]]
+
+
+** Démonstration
+
+
+
+* Conclusion
