@@ -1,0 +1,22 @@
+<section id="posts-by-tag">
+    <h2>~ Articles taggés "{{ .Tag }}"</h2>
+    {{ range .Posts }}
+    <div class="article">
+	<a href="{{ .PathHtml }}">
+	    <article>
+		<p class="date">{{ .DateStr }}</p>
+		<div class="right">
+		    <h3>{{ .Title }}</h3>
+		    <p class="description">{{ .Description }}</p>
+		    <p class="reading-time">{{ .ReadTime }} minutes de lecture</p>
+		    <div class="article-tags">
+			{{ range .Tags }}
+			<div class="tag">{{ . }}</div>
+			{{ end }}
+		    </div>
+		</div>
+	    </article>
+	</a>
+    </div>
+    {{end}}
+</section>
