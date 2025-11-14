@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -32,6 +33,12 @@ func copyMedias() error {
 				}
 				log.Println("Copyied media from", s, "to", newPath)
 			}
+		}
+
+		if d.IsDir() {
+			log.Println("Skipping directory:", s)
+			copyDir(d.Name(), path.Join("/build/medias", d.Name()))
+			return nil
 		}
 		return nil
 	})
