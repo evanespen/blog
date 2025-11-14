@@ -21,6 +21,7 @@ import (
 //   - posts: A slice of Post structs representing the blog posts.
 //   - tags: A slice of strings representing the tags.
 //   - css: A string containing the compiled CSS styles.
+//
 // Returns:
 //   - An error if any step of the process fails, otherwise nil.
 func renderHome(posts []Post, tags []string, css string) error {
@@ -82,6 +83,7 @@ func renderHome(posts []Post, tags []string, css string) error {
 //   - lang: The programming language of the code.
 //   - inline: Whether the code block is inline or not.
 //   - params: Additional parameters for highlighting, such as highlighted lines.
+//
 // Returns:
 //   - A string containing the highlighted code block in HTML format.
 func highlightCodeBlock(source, lang string, inline bool, params map[string]string) string {
@@ -113,6 +115,7 @@ func highlightCodeBlock(source, lang string, inline bool, params map[string]stri
 //   - post: The Post struct representing the blog post.
 //   - css: A string containing the compiled CSS styles.
 //   - tags: A slice of strings representing the tags.
+//
 // Returns:
 //   - An error if any step of the process fails, otherwise nil.
 func renderPost(post Post, css string, tags []string) error {
@@ -142,7 +145,7 @@ func renderPost(post Post, css string, tags []string) error {
 	}
 
 	hero := func(post Post) template.HTML {
-		if post.Hero != "" {
+		if post.Hero != "/medias/" && post.Hero != "/medias/none" {
 			return template.HTML(fmt.Sprintf("<img id=\"hero\" src=\"%s\"/>", post.Hero))
 		} else {
 			return template.HTML("")
@@ -190,6 +193,7 @@ func renderPost(post Post, css string, tags []string) error {
 //   - posts: A slice of Post structs representing the blog posts associated with the tag.
 //   - tags: A slice of strings representing all tags.
 //   - css: A string containing the compiled CSS styles.
+//
 // Returns:
 //   - An error if any step of the process fails, otherwise nil.
 func renderTagPage(tag string, posts []Post, tags []string, css string) error {
