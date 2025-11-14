@@ -1,0 +1,364 @@
+#+TITLE: Incus pour gérer vos VM et CT
+#+DATE: 2025-11-14T00:00:00Z
+#+DRAFT: false
+#+AUTHOR: Evrard Van Espen
+#+DESCRIPTION: Présentation d'Incus, une alternative à Proxmox pour gérer les VMs et les CTs
+#+SLUG: incus
+#+TAGS: système
+#+HERO: ./incus.png
+
+* /Incus/, c'est quoi ?
+
+/Incus/ est une solution moderne de virtualisation et de gestion de conteneurs, conçue comme un /fork/ communautaire de /LXD/ après le changement de licence de /Canonical/.
+*/Open source/* et axé sur la simplicité, /Incus/ permet de créer et gérer des *conteneurs* et des *machines virtuelles*, le tout avec une intégration fluide sur /Linux/.
+Il se distingue par sa *légèreté*, sa *sécurité renforcée* et sa *compatibilité* avec les technologies /cloud/, tout en offrant une *interface en ligne de commande* intuitive et une /API REST/.
+Idéal pour les développeurs et les administrateurs système, /Incus/ facilite le déploiement d’environnements isolés, que ce soit pour le développement, les tests ou la production, tout en restant performant et facile à prendre en main.
+Son approche modulaire et sa communauté active en font un outil de choix pour ceux qui recherchent une alternative flexible et transparente aux solutions propriétaires.
+
+* Installation
+
+#+BEGIN_INFO
+/Incus/ est compatible et disponible sur la majorité des distributions /Linux/.
+#+END_INFO
+
+Dans mon cas, j'ai installé /Incus/ sur une machine /Fedora 43/.
+
+Ma machine hôte est dotée de 2 cartes réseau, une qui sera utilisée pour la connexion à la machine et une autre qui sera utilisée comme pont pour les machines invitées.
+
+** Installer le paquet /incus/ sur la machine
+#+BEGIN_SRC
+dnf install -y incus
+#+END_SRC
+
+** Activer et démarrer le service /Incus/
+#+BEGIN_SRC
+systemctl enable --now incus
+systemctl start incus
+#+END_SRC
+
+** Configuration du /kernel/
+
+Ces modifications sont nécessaires pour permettre au /kernel linux/ de lancer les machines virtuelles et les conteneurs.
+Pour aller plus loin, vous pouvez consulter [[https://docs.rockylinux.org/10/books/incus_server/01-install/#environment-set-up][cette page]].
+
+Mettre le contenu suivant dans =/etc/sysctl.d/90-incus-override.conf=
+#+BEGIN_SRC
+## The following changes have been made for LXD ##
+
+# fs.inotify.max_queued_events specifies an upper limit on the number of events that can be queued to the corresponding inotify instance
+ - (default is 16384)
+
+fs.inotify.max_queued_events = 1048576
+
+# fs.inotify.max_user_instances This specifies an upper limit on the number of inotify instances that can be created per real user ID -
+(default value is 128)
+
+fs.inotify.max_user_instances = 1048576
+
+# fs.inotify.max_user_watches specifies an upper limit on the number of watches that can be created per real user ID - (default is 8192)
+
+fs.inotify.max_user_watches = 1048576
+
+# vm.max_map_count contains the maximum number of memory map areas a process may have. Memory map areas are used as a side-effect of cal
+ling malloc, directly by mmap and mprotect, and also when loading shared libraries - (default is 65530)
+
+vm.max_map_count = 262144
+
+# kernel.dmesg_restrict denies container access to the messages in the kernel ring buffer. Please note that this also will deny access t
+o non-root users on the host system - (default is 0)
+
+kernel.dmesg_restrict = 1
+
+# This is the maximum number of entries in ARP table (IPv4). You should increase this if you create over 1024 containers.
+
+net.ipv4.neigh.default.gc_thresh3 = 8192
+
+# This is the maximum number of entries in ARP table (IPv6). You should increase this if you plan to create over 1024 containers.Not nee
+ded if not using IPv6, but...
+
+net.ipv6.neigh.default.gc_thresh3 = 8192
+
+# This is a limit on the size of eBPF JIT allocations which is usually set to PAGE_SIZE * 40000. Set this to 1000000000 if you are running Rocky Linux 9.x
+
+net.core.bpf_jit_limit = 1000000000
+
+# This is the maximum number of keys a non-root user can use, should be higher than the number of containers
+
+kernel.keys.maxkeys = 2000
+
+# This is the maximum size of the keyring non-root users can use
+
+kernel.keys.maxbytes = 2000000
+
+# This is the maximum number of concurrent async I/O operations. You might need to increase it further if you have a lot of workloads th
+at use the AIO subsystem (e.g. MySQL)
+
+fs.aio-max-nr = 524288
+#+END_SRC
+
+#+BEGIN_WARNING
+*Redémarrer la machine*
+#+END_WARNING
+
+Une fois que la machine a redémarré, lancer
+#+BEGIN_SRC
+sysctl net.core.bpf_jit_limit
+#+END_SRC
+Et vérifier que le retour est bien 
+#+BEGIN_SRC
+net.core.bpf_jit_limit = 1000000000 
+#+END_SRC
+
+** Initialisation d'/Incus/
+
+Lancer la commande =incus admin init=.
+
+Le processus permet de choisir la configuration qui sera appliquée.
+
+#+BEGIN_SRC
+Would you like to use clustering? (yes/no) [default=no]:
+#+END_SRC
+
+Ce choix permet d'activer ou non le mode /cluster/, je laisse le choix par défaut (/no/) car je n'ai qu'une seule machine pour le moment.
+
+#+BEGIN_SRC
+Do you want to configure a new storage pool? (yes/no) [default=yes]:
+#+END_SRC
+
+Ici, laisser le choix par défaut (/yes/) pour configurer le stockage d'/Incus/.
+
+#+BEGIN_SRC
+Name of the new storage pool [default=default]:
+#+END_SRC
+
+Ici, il est possible de choisir le nom pour le stockage, je laisse la valeur par défaut.
+
+#+BEGIN_SRC
+Name of the storage backend to use (btrfs, dir, lvm, zfs, ceph) [default=zfs]:
+#+END_SRC
+
+Ici, il est possible de choisir le système de stockage qui sera utilisé. Dans mon cas, j'ai choisi =dir=.
+
+#+BEGIN_INFO
+=dir= n'est pas recommandé pour la production, mais permet d'accéder facilement aux fichiers présents dans les conteneurs sans passer par /Incus/.
+#+END_INFO
+
+#+BEGIN_SRC
+Would you like to create a new local network bridge? (yes/no) [default=yes]:
+What should the new bridge be called? [default=incusbr0]: 
+What IPv4 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]:
+What IPv6 address should be used? (CIDR subnet notation, “auto” or “none”) [default=auto]: none
+#+END_SRC
+
+Laisser ces choix à leurs valeurs par défaut, il s'agit ici de configurer le réseau qui sera utilisé par nos invités.
+
+#+BEGIN_SRC
+Would you like the Incus server to be available over the network? (yes/no) [default=no]: yes
+#+END_SRC
+
+Ici, il est possible de permettre (ou non) d'accéder au serveur depuis le réseau.
+Je choisi /yes/ car je veux pouvoir gérer /Incus/ depuis ma machine de travail.
+
+#+BEGIN_SRC
+Address to bind Incus to (not including port) [default=all]:
+Port to bind Incus to [default=8443]:
+#+END_SRC
+
+Laisser ces choix à leurs valeurs par défaut aussi, il s'agit de configurer le port et l'interface sur laquelle l'/API/ d'/Incus/ se mettra en écoute.
+
+#+BEGIN_SRC
+Would you like stale cached images to be updated automatically? (yes/no) [default=yes]:
+#+END_SRC
+
+Ici, il est possible d'activer (ou non) la mise à jour automatique des images de VM ou CT.
+Laisser le choix par défaut (/yes/).
+
+#+BEGIN_SRC
+Would you like a YAML "incus admin init" preseed to be printed? (yes/no) [default=no]:
+#+END_SRC
+
+Laisser le choix par défaut (/no/).
+
+** Configurer l'utilisateur d'administration
+
+Il est possible et recommandé de créer un utilisateur spécifique pour l'administration du serveur /Incus/.
+
+Dans mon cas, cet utilisateur sera =balin=.
+
+Ajouter l'utilisateur aux groupes /Incus/ :
+#+BEGIN_SRC
+usermod -aG incus-admin balin
+usermod -aG incus balin
+#+END_SRC
+
+Configurer les =subuid= et =subgid= pour l'utilisateur =root= :
+Dans les fichiers =/etc/subuid= et =/etc/subgid=, ajoutez la ligne suivante :
+#+BEGIN_SRC
+root:1000000:1000000000
+#+END_SRC
+
+#+BEGIN_WARNING
+*Redémarrer la machine*
+#+END_WARNING
+
+
+** Configuration du pare-feu / réseau
+
+#+BEGIN_INFO
+Les commandes données utiliseront =firewalld= car c'est le programme par défaut de /Fedora/.
+#+END_INFO
+
+Ajouter une zone pour le pont réseau
+#+BEGIN_SRC
+firewall-cmd --new-zone=bridge --permanent
+firewall-cmd --reload
+#+END_SRC
+
+Ajouter le pont réseau à la nouvelle zone
+#+BEGIN_SRC
+firewall-cmd --zone=bridge --add-interface=incusbr0 --permanent
+firewall-cmd --zone=bridge --set-target=ACCEPT --permanent
+firewall-cmd --reload
+#+END_SRC
+
+Lancer =firewall-cmd --zone=bridge --list-all= et vérifier le résultat
+#+BEGIN_SRC
+bridge (active)
+  target: ACCEPT
+  icmp-block-inversion: no
+  interfaces: incusbr0
+  sources:
+  services:
+  ports:
+  protocols:
+  forward: no
+  masquerade: no
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+#+END_SRC
+
+Créer une zone pour le réseau local
+#+BEGIN_SRC
+firewall-cmd --new-zone=local --permanent
+firewall-cmd --reload
+#+END_SRC
+
+Accepter le trafic local dans la nouvelle zone
+#+BEGIN_SRC
+firewall-cmd --zone=local --add-source=127.0.0.1/8 --permanent
+firewall-cmd --zone=local --set-target=ACCEPT --permanent
+firewall-cmd --reload
+#+END_SRC
+
+Vérifier la configuration de la nouvelle zone =firewall-cmd --zone=local --list all=
+#+BEGIN_SRC
+local (active)
+  target: ACCEPT
+  icmp-block-inversion: no
+  interfaces:
+  sources: 127.0.0.1/8
+  services:
+  ports:
+  protocols:
+  forward: no
+  masquerade: no
+  forward-ports:
+  source-ports:
+  icmp-blocks:
+  rich rules:
+#+END_SRC
+
+Ajouter le réseau local dans la zone =trusted= ainsi que le service =ssh= (si pas déjà fait)
+#+BEGIN_SRC
+firewall-cmd --zone=trusted --add-source=192.168.1.0/24
+firewall-cmd --zone=trusted --add-service=ssh
+firewall-cmd --runtime-to-permanent
+firewall-cmd --reload
+#+END_SRC
+
+*** Configuration d'un pont physique
+
+J'ai choisi d'utiliser la deuxième interface réseau de ma machine (=enp5s0f1=) pour permettre aux VMs et CTs d'accéder en direct à mon réseau local.
+
+#+BEGIN_SRC
+incus network create localnet --type=physical parent=enp5s0f1
+#+END_SRC
+
+Pour que cela fonctionne, il est aussi nécessaire d'installer et démarrer =openvswitch=
+#+BEGIN_SRC
+dnf install -y openvswitch
+systemctl enable --now openvswitch
+systemctl start openvswitch
+#+END_SRC
+
+* Commandes utiles
+- =incus list= :: Lister toutes les instances (conteneurs et machines virtuelles).
+- =incus launch images:ubuntu/22.04 <nim>= :: Créer et démarrer un conteneur à partir d’une image Ubuntu 22.04.
+- =incus start <nom>= :: Démarrer une instance existante.
+- =incus stop <nom>= :: Arrêter une instance en cours d’exécution.
+- =incus restart <nom>= :: Redémarrer une instance.
+- =incus delete <nom>= :: Supprimer définitivement une instance.
+- =incus exec <nom> -- bash= :: Ouvrir un shell interactif dans un conteneur.
+- =incus file pull <nom>/chemin/vers/fichier ./= :: Copier un fichier depuis un conteneur vers la machine hôte.
+- =incus file push ./fichier <nom>/chemin/= :: Copier un fichier de la machine hôte vers un conteneur.
+- =incus config show <nom>= :: Afficher la configuration d’une instance.
+- =incus image list= :: Lister les images disponibles localement.
+- =incus profile list= :: Lister les profils de configuration disponibles.
+- =incus network list= :: Lister les réseaux configurés.
+
+* Lancer des conteneurs et tester
+
+Nous allons maintenant lancer deux conteneurs pour vérifier que tout fonctionne et qu'ils peuvent communiquer entre eux.
+
+Lancer les conteneurs
+#+BEGIN_SRC
+incus launch images:fedora/43 foo
+incus launch images:fedora/43 bar
+#+END_SRC
+
+Dans un premier terminal, lancer
+#+BEGIN_SRC
+incus exec foo -- bash
+#+END_SRC
+
+Et dans un second
+#+BEGIN_SRC
+incus exec bar -- bash
+#+END_SRC
+
+Normalement le =ping= entre les deux devrait fonctionner.
+Les deux conteneurs devraient avoir des adresses /IP/ similaires à =10.123.111.40/24=, donc des adresses /IP/ qui ne sont pas dans le réseau local mais dans le réseau d'/Incus/.
+
+* Lancer un conteneur dans le réseau local
+
+Précédemment, un pont "physique" a été créé pour permettre de connecter des VMs et CTs directement au réseau local.
+
+Créer un conteneur sans interface réseau
+#+BEGIN_SRC
+incus init images:fedora/43 testlocal
+#+END_SRC
+
+Lui ajouter une interface réseau
+#+BEGIN_SRC
+incus config device add testlocal eth0 nic nictype=macvlan parent=enp5s0f1 name=eth0
+#+END_SRC
+
+Puis le démarrer
+#+BEGIN_SRC
+incus start testlocal
+#+END_SRC
+
+Finalement, ouvrir un /shell/ dans le conteneur
+#+BEGIN_SRC
+incus exec testlocal -- bash
+#+END_SRC
+
+Et vérifier son adresse /IP/.
+Il devrait avoir une interface =eth0= avec une adresse /IP/ dans le réseau local et attribuée par le routeur.
+
+
+* Sources
+- [[https://linuxcontainers.org/incus/docs/main/tutorial/first_steps/][Documentation officielle]]
+- [[https://docs.rockylinux.org/10/books/incus_server/00-toc/][Documentation sur /RockyLinux/]]
